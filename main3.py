@@ -253,7 +253,7 @@ def timestamp_to_seconds(timestamp):
     else:
         raise ValueError("Timestamp format is incorrect, should be HH:MM:SS, MM:SS, or SS")
 
-def extract_text_from_video(video_path, output_dir, frame_interval=30):
+def extract_text_from_video(video_path,  frame_interval=1):
     """
     Extracts text from video frames using Tesseract OCR and saves unique text.
 
@@ -262,9 +262,6 @@ def extract_text_from_video(video_path, output_dir, frame_interval=30):
     :param frame_interval: Interval to capture frames for OCR (in seconds).
     :return: List of unique text found in the video.
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     unique_texts = set()
     video = VideoFileClip(video_path)
     duration = int(video.duration)
@@ -278,25 +275,30 @@ def extract_text_from_video(video_path, output_dir, frame_interval=30):
 
     return list(unique_texts)
 
-# Define download options
-ydl_opts = {
-    'verbose': True,
-    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',  # Download best video and audio and merge them into an MP4 file
-    'outtmpl': '%(title)s.%(ext)s'  # Define output template
-}
+def get_video_info(video_url):
+    """
+    Retrieves video information using yt_dlp.
 
-# URL of the video to download
-video_url = 'https://www.youtube.com/watch?v=77ZF50ve6rs&t=44s&ab_channel=LecturesbyWalterLewin.Theywillmakeyou%E2%99%A5Physics.'
+    :param video_url: URL of the YouTube video.
+    :return: A dictionary containing the video's title and file path.
+    """
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',  # Download best video and audio and merge them into an MP4 file
+        'outtmpl': '%(title)s.%(ext)s',  # Define output template
+        'quiet': True
+    }
+    with YoutubeDL(ydl_opts) as ydl:
+        info_dict = ydl.extract_info(video_url, download=True)
+        video_title = info_dict.get('title', None)
+        video_filename = ydl.prepare_filename(info_dict)
+        return video_filename
 
-# Download the video
-with YoutubeDL(ydl_opts) as ydl:
-    ydl.download([video_url])
-
-# Rename or move the downloaded file using os module if needed
-original_filename = '/Users/namanbajpai/peopleplus/When a physics teacher knows his stuff !!.mp4'
+link = 'https://www.youtube.com/watch?v=-OTc0Ki7Sv0&ab_channel=Fireship'
+    
+original_filename =  get_video_info(link)
 audio_path = extract_audio(original_filename)
 transcript_segments = transcribe_with_timestamps(audio_path)
 print(analyze_transcript(transcript_segments, api_key))
-unique_texts = extract_text_from_video(original_filename)
-print(unique_texts)
+#unique_texts = extract_text_from_video(original_filename)
+#print(unique_texts)
 
