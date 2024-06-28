@@ -1,3 +1,5 @@
+torch
+numpy
 boto3
 pytube
 pytesseract

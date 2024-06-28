@@ -1,16 +1,24 @@
 import os
+import time
 import json
 import requests
 import whisper
 import cv2
 import pytesseract
+import re
 from yt_dlp import YoutubeDL
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from flask import Flask, request, jsonify
-import re
-from celery import Celery
+from flask_apscheduler import APScheduler
 from pytube import YouTube
+from flask_cors import CORS
 
+
+app = Flask(__name__)
+CORS(app)
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 
 api_key = os.getenv('OPENAI_API_KEY')
 # Load Whisper model globally to avoid redundancy
@@ -158,7 +166,7 @@ def analyze_transcript(transcript, api_key):
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     data = {
-        "model": "gpt-4-0125-preview",  # Specified model version
+        "model": "gpt-4o",  # Specified model version
         "messages": [
             {"role": "system", "content": "You are a video editing software designed to return timestamps in JSON format"},
             {"role": "user", "content": prompt}
@@ -297,19 +305,19 @@ def download_ydl(video_url, output_path):
 
     # Download the video
     with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
-    return ydl_opts['outtmpl']
+        result = ydl.extract_info(video_url, download=True)
+        print(f"downloading {result.get('title')} at {ydl.prepare_filename(result)}")
+    return ydl.prepare_filename(result)
 
-def process_video(video_file):
+def process_video(video_path):
 # Rename or move the downloaded file using os module if needed
     #original_filename = '/Users/namanbajpai/peopleplus/When a physics teacher knows his stuff !!.mp4'
-    audio_path = extract_audio(video_file)
+    audio_path = extract_audio(video_path)
     transcript_segments = transcribe_with_timestamps(audio_path)
     print(analyze_transcript(transcript_segments, api_key))
-    unique_texts = extract_text_from_video(original_filename)
-    print(unique_texts)
-
-app = Flask(__name__)
+    ocr_texts = extract_text_from_video(video_path, output_dir="~/people+ai/ocr/") 
+    print(ocr_texts)
+    #create_video_clips_from_gpt_output(video_file, )
 
 def is_valid_youtube_url(url):
     youtube_regex = re.compile(
@@ -317,63 +325,18 @@ def is_valid_youtube_url(url):
     )
     return youtube_regex.match(url)
 
-
-@app.route('/video_url', methods=['POST'])
-def input_video():
-    try:
-        data = request.get_json()
-        if 'url' in data:
-            url = data['url']
-            if is_valid_youtube_url(url):
-                try:
-                    yt = YouTube(url)
-                    video_filepath = download_ydl(url, output_path="~")
-                    process_file.apply_async(args=[video_filepath])
-                    return jsonify({'message': 'Valid YouTube URL', 'title': yt.title}), 200
-                except Exception as e:
-                    return jsonify({'error': str(e)}), 400
-            else:
-                return jsonify({'error': 'Invalid YouTube URL'}), 400
-        else:
-            return jsonify({'error': 'URL not provided'}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-def make_celery(app):
-    celery = Celery(
-        app.import_name,
-        backend=app.config['CELERY_RESULT_BACKEND'],
-        broker=app.config['CELERY_BROKER_URL']
-    )
-    celery.conf.update(app.config)
-    TaskBase = celery.Task
-
-    class ContextTask(TaskBase):
-        abstract = True
-
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return TaskBase.__call__(self, *args, **kwargs)
-
-    celery.Task = ContextTask
-    return celery
-
-app.config.update(
-    CELERY_BROKER_URL='redis://localhost:6379/0',
-    CELERY_RESULT_BACKEND='redis://localhost:6379/0'
-)
-
-celery = make_celery(app)
-
-@celery.task
 def process_file(file_path):
     # Your file processing logic here
     print(f'Processing file: {file_path}')
-    # Simulate a long procesing task
-    import time
+    process_video(file_path)
+    # Simulate a long processing task
     time.sleep(10)
     print('File processed!')
+
+
+@app.route('/hello', methods=['GET'])
+def hello():
+    return jsonify({'message': 'Hello, World!'})
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -387,8 +350,29 @@ def upload_file():
     if file:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(file_path)
-        process_file.apply_async(args=[file_path])
+        scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
         return jsonify({"message": "File uploaded successfully!"}), 200
+
+@app.route('/video_url', methods=['POST'])
+def input_video():
+    try:
+        data = request.get_json()
+        if 'url' in data:
+            url = data['url']
+            if is_valid_youtube_url(url):
+                try:
+                    yt = YouTube(url)
+                    video_filepath = download_ydl(url, output_path="~/people+ai/videos/")
+                    scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
+                    return jsonify({'message': 'Valid YouTube URL', 'title': yt.title}), 200
+                except Exception as e:
+                    return jsonify({'error': str(e)}), 400
+            else:
+                return jsonify({'error': 'Invalid YouTube URL'}), 400
+        else:
+            return jsonify({'error': 'URL not provided'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
