@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+body.high-contrast {
+  background-color: black;
+  color: white;
+}
+
+.high-contrast .ant-btn-primary {
+  background-color: yellow;
+  color: black;
+}
+
+.high-contrast .ant-input {
+  background-color: black;
+  color: white;
+  border: 1px solid yellow;
+}
+
+.high-contrast .ant-upload {
+  background-color: black;
+  color: white;
+}
