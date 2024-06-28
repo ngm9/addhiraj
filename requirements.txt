@@ -1,0 +1,10 @@
+boto3
+pytube
+pytesseract
+flask
+celery
+redis
+openai-whisper
+yt_dlp
+moviepy
+opencv-python
