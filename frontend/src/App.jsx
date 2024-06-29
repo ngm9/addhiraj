@@ -9,7 +9,10 @@ import { ThemeProvider } from './components/ThemeChange/ThemeContext';
 import ThemeContext from './components/ThemeChange/ThemeContext';
 import Button from './components/button';
 import './index.css';
-
+import { TTSProvider } from './store/TTSContext';
+import FocusManager from './KeyBoardNavigation';
+import SpeakerButton from './components/SpeakerButton';
+import { VideoDetailsProvider } from './components/sub-components/VideoDetailsContext';
 // import ProjectsDashboard from './components/ProjectDashboard';
 // import CreateProject from './components/CreateProject';
 // import ChatInterface from './components/ChatInterface';
@@ -25,6 +28,8 @@ function App() {
   }, [isHighContrast]);
 
   return (
+    <TTSProvider>
+      <FocusManager>
     <div className={`flex flex-col h-screen ${isHighContrast ? 'bg-black text-white' : 'bg-gray-800 text-white'}`}>
     <header className="flex items-center justify-between p-5 bg-gray-900">
       <h1 className="text-xl">Addhiraj</h1>
@@ -37,17 +42,20 @@ function App() {
       </div>
       <div className="hidden lg:block lg:w-1/4 ml-5">
         <ChatWindow />
+        <SpeakerButton />
       </div>
     </div>
-    <div className="p-5">
-      <Button className="bg-white-400 p-2 mx-auto rounded-md" text="Button" />
-    </div>
+    
   </div>
+  </FocusManager>
+  </TTSProvider>
   );
 }
 
 export default () => (
   <ThemeProvider>
-    <App />
+    <VideoDetailsProvider>
+      <App />
+    </VideoDetailsProvider>
   </ThemeProvider>
 );

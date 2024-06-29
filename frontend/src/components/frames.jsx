@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { Skeleton } from 'antd';
+import '../styles/CustomScrollBar.css';
+import { VideoDetailsContext } from './sub-components/VideoDetailsContext'; // Import context
+import { useVideoDetails } from './sub-components/VideoDetailsContext';
 
 const FrameBar = () => {
+  const { videoDetails } = useVideoDetails(); // Use context to get video details
+  console.log("This is the videoDetails in framer:",videoDetails)
   return (
-    <div className="flex justify-around p-5 bg-white-400 rounded-lg">
-      <div className="p-2"><img src="https://via.placeholder.com/100" alt="Frame 1" className="rounded-lg" /></div>
-      <div className="p-2"><img src="https://via.placeholder.com/100" alt="Frame 2" className="rounded-lg" /></div>
-      <div className="p-2"><img src="https://via.placeholder.com/100" alt="Frame 3" className="rounded-lg" /></div>
-      <div className="p-2"><img src="https://via.placeholder.com/100" alt="Frame 4" className="rounded-lg" /></div>
-      <div className="p-2"><img src="https://via.placeholder.com/100" alt="Frame 5" className="rounded-lg" /></div>
+    <div className="flex justify-around overflow-x-auto m-3 p-5 bg-transparent space-x-2 border border-gray-300 rounded-lg">
+      {!videoDetails ? (
+        <>
+          <Skeleton.Avatar active size={144} shape="square" />
+          <Skeleton.Avatar active size={144} shape="square" />
+          <Skeleton.Avatar active size={144} shape="square" />
+          <Skeleton.Avatar active size={144} shape="square" />
+          <Skeleton.Avatar active size={144} shape="square" />
+        </>
+      ) : (
+        videoDetails.ts.map((frame, index) => (
+          <div key={index} className="p-2">
+            <img src={frame.s3_video_url} alt={`Frame ${frame.seq}`} className="rounded-lg w-36 h-36" />
+            <p className="text-white">{frame["short description"]}</p>
+          </div>
+        ))
+      )}
     </div>
   );
 };

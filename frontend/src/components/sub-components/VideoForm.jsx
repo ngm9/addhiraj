@@ -24,6 +24,7 @@ const VideoForm = ({ handleSubmit, handleFileChange }) => {
         accept="video/*"
         showUploadList={false}
         beforeUpload={(file) => {
+          console.log("This is the file uploaded from the upload component: ",file);
           handleFileChange({ file });
           return false;
         }}
