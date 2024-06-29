@@ -10,4 +10,7 @@ yt_dlp
 moviepy
 opencv-python
 flask-cors
-APScheduler
+Flask-APScheduler
+langchain_community
+langchain_openai
+chromadb

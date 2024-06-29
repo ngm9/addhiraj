@@ -317,7 +317,10 @@ def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir
 
 def create_video_segments_from_data(data, source_video_path, output_dir):
     video = VideoFileClip(source_video_path)
+<<<<<<< Updated upstream
     print (f"data: {data}")
+=======
+>>>>>>> Stashed changes
     # Process each timestamp segment in the JSON data
     for segment in data['ts']:
         ts_start = float(segment['ts_start'])
@@ -328,6 +331,10 @@ def create_video_segments_from_data(data, source_video_path, output_dir):
         clip = video.subclip(ts_start, ts_end)
         output_filename = f"{segment['seq']}_{description}.mp4"
         clip.write_videofile(f"{output_dir}/{output_filename}", codec="libx264", audio_codec="aac")
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
         print(f"Created clip {output_filename} at {f"{output_dir}/{output_filename}"}: {ts_start} to {ts_end}")
 
 
@@ -396,9 +403,14 @@ def process_video(video_path):
     analysis_json = analyze_transcript(transcript_segments, api_key)
     append_text_to_chromadb(str(transcript_segments)+ str(analysis_json))
     gpt_output = extract_json_from_response(analysis_json)
-    print(f"gpt_output: {gpt_output}")
-    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
     
+    print(f"gpt_output: {gpt_output}")
+    video_prefix = video_path.split('/')[-1].split('.')[0]
+    details_json = f"{app.config['UPLOAD_FOLDER']}/details.json"  
+    with open(details_json, 'w') as file:
+            json.dump(gpt_output, file, indent=4)
+    
+    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
     create_video_segments_from_data(extract_json_from_response(analysis_json), video_path, app.config['UPLOAD_FOLDER'])
 
     # Process the extracted text
@@ -527,8 +539,6 @@ def input_video():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
 @app.route('/transcribe_audio', methods=['POST'])
 def transcribe_audio():
     if 'file' not in request.files:
@@ -562,7 +572,16 @@ def transcribe_audio():
         return jsonify({'error': 'File type not allowed'}), 400
 
 
-
+@app.route('/get_details', methods=['GET'])
+def get_details():
+    details_json = f"{app.config['UPLOAD_FOLDER']}/details.json"
+    if os.path.exists(details_json):
+        with open(details_json, 'r') as file:
+            details = json.load(file)
+            return jsonify(details)
+    else:
+        return jsonify({'error': 'Details not found'}), 404
+    
 @app.route('/chat', methods=['POST'])
 def chat():
     chat_msg = request.form.get('chat_msg')
