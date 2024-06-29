@@ -318,7 +318,7 @@ def process_video(video_path):
     print(analyze_transcript(transcript_segments, api_key))
     ocr_texts = extract_text_from_video(video_path, output_dir=app.config['UPLOAD_FOLDER']) 
     print(ocr_texts)
-    #create_video_clips_from_gpt_output(video_file, )
+    #create_vid eo_clips_from_gpt_output(video_file, )
 
 def is_valid_youtube_url(url):
     youtube_regex = re.compile(
@@ -359,7 +359,11 @@ def upload_file():
     if file and allowed_video_file(file.filename):
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
+        try:
+            file.save(file_path)
+            return f'File successfully uploaded to {file_path}'
+        except Exception as e:
+            return f'An error occurred while saving the file: {e}'
         return f'File successfully uploaded to {file_path}'
     else:
         return 'File type not allowed'
