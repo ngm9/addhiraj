@@ -3,10 +3,11 @@ numpy
 boto3
 pytube
 pytesseract
-flask
-celery
+flasks
 redis
 openai-whisper
 yt_dlp
 moviepy
 opencv-python
+flask-cors
+APScheduler

@@ -8,10 +8,11 @@ import pytesseract
 import re
 from yt_dlp import YoutubeDL
 from moviepy.editor import VideoFileClip, concatenate_videoclips
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for, render_template
 from flask_apscheduler import APScheduler
 from pytube import YouTube
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
@@ -23,8 +24,8 @@ scheduler.start()
 api_key = os.getenv('OPENAI_API_KEY')
 # Load Whisper model globally to avoid redundancy
 MODEL = whisper.load_model("base")
-app.config['UPLOAD_FOLDER'] = '~/people+ai/' 
-
+app.config['UPLOAD_FOLDER'] = "~/people+ai/data/"
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
 def extract_audio(video_path):
     """
@@ -315,7 +316,7 @@ def process_video(video_path):
     audio_path = extract_audio(video_path)
     transcript_segments = transcribe_with_timestamps(audio_path)
     print(analyze_transcript(transcript_segments, api_key))
-    ocr_texts = extract_text_from_video(video_path, output_dir="~/people+ai/ocr/") 
+    ocr_texts = extract_text_from_video(video_path, output_dir=app.config['UPLOAD_FOLDER']) 
     print(ocr_texts)
     #create_video_clips_from_gpt_output(video_file, )
 
@@ -334,24 +335,34 @@ def process_file(file_path):
     print('File processed!')
 
 
+def allowed_video_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def c(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/hello', methods=['GET'])
 def hello():
     return jsonify({'message': 'Hello, World!'})
 
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    print("Request received: {request}")
     if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
+        return 'No file part'
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    if file:
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        return 'No selected file'
+    if file and allowed_video_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
-        return jsonify({"message": "File uploaded successfully!"}), 200
+        return f'File successfully uploaded to {file_path}'
+    else:
+        return 'File type not allowed'
 
 @app.route('/video_url', methods=['POST'])
 def input_video():
@@ -362,7 +373,7 @@ def input_video():
             if is_valid_youtube_url(url):
                 try:
                     yt = YouTube(url)
-                    video_filepath = download_ydl(url, output_path="~/people+ai/videos/")
+                    video_filepath = download_ydl(url, output_path=app.config['UPLOAD_FOLDER'])
                     scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
                     return jsonify({'message': 'Valid YouTube URL', 'title': yt.title}), 200
                 except Exception as e:
