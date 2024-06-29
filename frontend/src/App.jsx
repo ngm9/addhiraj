@@ -38,7 +38,7 @@ function App() {
     <div className="flex flex-grow p-5">
       <div className="flex flex-col w-full lg:w-3/4">
         <MainVideo />
-        <FrameBar />
+        {/* <FrameBar /> */}
       </div>
       <div className="hidden lg:block lg:w-1/4 ml-5">
         <ChatWindow />

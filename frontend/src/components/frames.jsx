@@ -3,6 +3,7 @@ import { Skeleton } from 'antd';
 import '../styles/CustomScrollBar.css';
 import { VideoDetailsContext } from './sub-components/VideoDetailsContext'; // Import context
 import { useVideoDetails } from './sub-components/VideoDetailsContext';
+import VideoPlayer from './sub-components/VideoPlayer';
 
 const FrameBar = () => {
   const { videoDetails } = useVideoDetails(); // Use context to get video details
@@ -19,9 +20,11 @@ const FrameBar = () => {
         </>
       ) : (
         videoDetails.ts.map((frame, index) => (
-          <div key={index} className="p-2">
-            <img src={frame.s3_video_url} alt={`Frame ${frame.seq}`} className="rounded-lg w-36 h-36" />
+          <div key={index} className="p-2" >
+            <a href="">
+            <img src="/logo_addheeraj.png" alt={`Frame ${frame.seq}`} className="rounded-lg w-36 h-36" />
             <p className="text-white">{frame["short description"]}</p>
+            </a>  
           </div>
         ))
       )}

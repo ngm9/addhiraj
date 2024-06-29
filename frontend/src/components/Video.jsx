@@ -10,6 +10,7 @@ import VideoPlayer from './sub-components/VideoPlayer';
 import { useTTS } from '../store/TTSContext';
 import { useVideoDetails } from './sub-components/VideoDetailsContext';
 import { VideoDetailsProvider } from './sub-components/VideoDetailsContext';
+import FrameBar from './frames';
 
 const MainVideo = () => {
     const {
@@ -21,7 +22,7 @@ const MainVideo = () => {
     } = useContext(VideoContext);
     const { speakText } = useTTS(); // Use the TTS hook
     const [isUploaded, setIsUploaded] = useState(false); // State to track upload status
-    const { setVideoDetails } = useVideoDetails(); // Use the video details context
+    const { videoDetails,setVideoDetails } = useVideoDetails(); // Use the video details context
 
     const fetchDetails = (fileName) => {
       getDetails(fileName)
@@ -226,11 +227,18 @@ const MainVideo = () => {
     }
   };
     return (
-      <div className="flex-grow p-5 rounded-lg flex flex-col justify-center items-center bg-gray-700 border border-gray-300">
+      <div>
+        <div className="flex-grow p-5 rounded-lg flex flex-col justify-center items-center bg-gray-700 border border-gray-300">
         <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Upload Video</h2>
         {!isUploaded && <VideoForm handleSubmit={handleSubmit} handleFileChange={handleFileChange} />}
         {(inputVideoUrl || videoFile) && <VideoPlayer />}
       </div>
+      <div className="flex flex-col w-full ">
+          {videoDetails && <FrameBar />} {/* Render FrameBar when videoDetails is populated */}
+      </div>
+      </div>
+
+      
     );
   };
   
