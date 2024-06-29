@@ -1,4 +1,5 @@
-# 🎥 ADDhiraj
+# ![ADDhiraj Logo](logo.png)
+#  ADDhiraj
 
 ADDhiraj is a revolutionary tool designed to empower individuals with Attention Deficit Disorders like ADD and ADHD in their educational journey. ADDhiraj addresses a critical challenge faced by millions worldwide—learning through videos.
 
