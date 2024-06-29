@@ -185,6 +185,12 @@ def analyze_transcript(transcript, api_key):
         print(f"Request failed with status code: {response.status_code}")
         return {"error": response.text}
 
+def extract_json_from_response(response):
+    # Extracting JSON from the string wrapped in code block (```)
+    content = response['choices'][0]['message']['content']
+    json_str = content.split('```json\n')[1].split('\n```')[0]
+    return json.loads(json_str)
+
 def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir):
     # Ensure the GPT output has the expected data structure
     if 'choices' not in gpt_output or not gpt_output['choices']:
@@ -315,11 +321,11 @@ def process_video(video_path):
     #original_filename = '/Users/namanbajpai/peopleplus/When a physics teacher knows his stuff !!.mp4'
     audio_path = extract_audio(video_path)
     transcript_segments = transcribe_with_timestamps(audio_path)
-    print(analyze_transcript(transcript_segments, api_key))
-    ocr_texts = extract_text_from_video(video_path, output_dir=app.config['UPLOAD_FOLDER']) 
-    print(ocr_texts)
-    #create_vid eo_clips_from_gpt_output(video_file, )
+    analysis_json = analyze_transcript(transcript_segments, api_key)
+    create_video_clips_from_gpt_output(extract_json_from_response(analysis_json), video_path, app.config['UPLOAD_FOLDER'])
 
+
+    # Process the extracted text
 def is_valid_youtube_url(url):
     youtube_regex = re.compile(
         r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/.+$'
@@ -334,14 +340,9 @@ def process_file(file_path):
     time.sleep(10)
     print('File processed!')
 
-
 def allowed_video_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def c(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
 @app.route('/hello', methods=['GET'])
 def hello():
@@ -359,12 +360,15 @@ def upload_file():
     if file and allowed_video_file(file.filename):
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        print(f"attemptig to save {file.filename} to {file_path}")
         try:
             file.save(file_path)
+            scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
             return f'File successfully uploaded to {file_path}'
         except Exception as e:
             return f'An error occurred while saving the file: {e}'
-        return f'File successfully uploaded to {file_path}'
+ 
+
     else:
         return 'File type not allowed'
 
