@@ -24,7 +24,7 @@ scheduler.start()
 api_key = os.getenv('OPENAI_API_KEY')
 # Load Whisper model globally to avoid redundancy
 MODEL = whisper.load_model("base")
-app.config['UPLOAD_FOLDER'] = "~/people+ai/data/"
+app.config['UPLOAD_FOLDER'] = "/home/ubuntu/people+ai/data"
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
 def extract_audio(video_path):
