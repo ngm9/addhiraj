@@ -13,20 +13,9 @@ from flask_apscheduler import APScheduler
 from pytube import YouTube
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-import os
-import json
-import requests
-import whisper
-import cv2
-import pytesseract
-from yt_dlp import YoutubeDL
-from moviepy.editor import VideoFileClip, concatenate_videoclips
-import pytesseract
-import os
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_experimental.text_splitter import SemanticChunker
-import os
 from openai import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import ChatPromptTemplate
@@ -44,6 +33,42 @@ api_key = os.getenv('OPENAI_API_KEY')
 MODEL = whisper.load_model("base")
 app.config['UPLOAD_FOLDER'] = "/home/ubuntu/people+ai/data"
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
+
+# Set the Chroma DB path and OpenAI API key
+CHROMA_PATH = "chroma"
+
+# Initialize OpenAI client with provided settings
+client = OpenAI(api_key=api_key)
+
+
+# Prompt template for generating responses
+PROMPT_TEMPLATE = """
+You are a Virtual Teaching Assistant (TA) for a university-level course. Your responsibilities include assisting students with their coursework, answering questions, providing explanations and clarifications on various topics, and offering guidance on assignments and projects.
+
+Your primary areas of expertise include only the context that is provided.
+
+Stay strictly on course information, do not engage in conversations that are off topic
+
+When responding to students, follow these guidelines:
+
+Clarity: Provide clear and concise explanations.
+Examples: Use examples to illustrate concepts whenever possible.
+Step-by-Step Guidance: Break down complex problems into smaller, manageable steps.
+Encouragement: Encourage students to think critically and explore alternative solutions.
+Resources: Suggest additional resources or reading materials if relevant.
+Please respond to the following student query as you would in your role as a Virtual TA:
+
+{context}
+
+---
+
+Answer the question based on the above context: {question}
+"""
+
+# Initialize Chroma vector store with OpenAI embeddings
+embedding_function = OpenAIEmbeddings(api_key=api_key)
+db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
 
 def extract_audio(video_path):
     """
@@ -387,41 +412,6 @@ def append_text_to_chromadb(text, persist_directory='chroma'):
     
     print(f"Text appended to ChromaDB in {persist_directory}")
 
-
-# Set the Chroma DB path and OpenAI API key
-CHROMA_PATH = "chroma"
-
-# Initialize OpenAI client with provided settings
-client = OpenAI(api_key=api_key)
-
-# Prompt template for generating responses
-PROMPT_TEMPLATE = """
-You are a Virtual Teaching Assistant (TA) for a university-level course. Your responsibilities include assisting students with their coursework, answering questions, providing explanations and clarifications on various topics, and offering guidance on assignments and projects.
-
-Your primary areas of expertise include only the context that is provided.
-
-Stay strictly on course information, do not engage in conversations that are off topic
-
-When responding to students, follow these guidelines:
-
-Clarity: Provide clear and concise explanations.
-Examples: Use examples to illustrate concepts whenever possible.
-Step-by-Step Guidance: Break down complex problems into smaller, manageable steps.
-Encouragement: Encourage students to think critically and explore alternative solutions.
-Resources: Suggest additional resources or reading materials if relevant.
-Please respond to the following student query as you would in your role as a Virtual TA:
-
-{context}
-
----
-
-Answer the question based on the above context: {question}
-"""
-
-# Initialize Chroma vector store with OpenAI embeddings
-embedding_function = OpenAIEmbeddings(api_key=api_key)
-db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
-
 def query_chatbot(query_text):
     try:
         # Query the Chroma database
@@ -455,7 +445,6 @@ def query_chatbot(query_text):
 @app.route('/hello', methods=['GET'])
 def hello():
     return jsonify({'message': 'Hello, World!'})
-
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
