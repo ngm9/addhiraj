@@ -317,10 +317,7 @@ def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir
 
 def create_video_segments_from_data(data, source_video_path, output_dir):
     video = VideoFileClip(source_video_path)
-<<<<<<< Updated upstream
-    print (f"data: {data}")
-=======
->>>>>>> Stashed changes
+    
     # Process each timestamp segment in the JSON data
     for segment in data['ts']:
         ts_start = float(segment['ts_start'])
@@ -331,10 +328,6 @@ def create_video_segments_from_data(data, source_video_path, output_dir):
         clip = video.subclip(ts_start, ts_end)
         output_filename = f"{segment['seq']}_{description}.mp4"
         clip.write_videofile(f"{output_dir}/{output_filename}", codec="libx264", audio_codec="aac")
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
         print(f"Created clip {output_filename} at {f"{output_dir}/{output_filename}"}: {ts_start} to {ts_end}")
 
 
