@@ -7,6 +7,17 @@ import pytesseract
 from yt_dlp import YoutubeDL
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 import pytesseract
+import os
+from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_experimental.text_splitter import SemanticChunker
+import os
+from openai import OpenAI
+from langchain.chains import RetrievalQA
+from langchain.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import Chroma
+from langchain_openai.embeddings import OpenAIEmbeddings  # Updated import
+
 api_key = os.getenv('OPENAI_API_KEY')
 
 # Load Whisper model globally to avoid redundancy
@@ -92,7 +103,7 @@ def analyze_transcript(transcript, api_key):
                     {{
                         "q": "question3",
                         "choices": ["", "", "", ""],
-                        "ans": "index"
+                        "ans": "instdex"
                     }}
                 ]
             }},
@@ -320,6 +331,102 @@ def create_video_segments_from_data(data, source_video_path):
 
 
 
+def append_text_to_chromadb(text, persist_directory):
+    # Initialize embeddings model
+    embeddings_model = OpenAIEmbeddings(openai_api_key=api_key)
+
+    # Initialize SemanticChunker with OpenAI embeddings
+    text_splitter = SemanticChunker(embeddings_model)
+
+    # Create a document using text splitter
+    doc = text_splitter.create_documents([text])[0]
+
+    # Initialize or load ChromaDB from persist_directory
+    if os.path.exists(persist_directory):
+        db = Chroma(embedding_function=embeddings_model, persist_directory=persist_directory)
+    else:
+        db = Chroma.from_documents([doc], embeddings_model, persist_directory=persist_directory)
+
+    # Append the document to ChromaDB
+    db.append_documents([doc])
+    
+    # Save the updated database
+    db.persist()
+    
+    print(f"Text appended to ChromaDB in {persist_directory}")
+
+
+
+# Set the Chroma DB path and OpenAI API key
+CHROMA_PATH = "chroma"
+
+# Initialize OpenAI client with provided settings
+client = OpenAI(api_key=api_key)
+
+# Prompt template for generating responses
+PROMPT_TEMPLATE = """
+You are a Virtual Teaching Assistant (TA) for a university-level course. Your responsibilities include assisting students with their coursework, answering questions, providing explanations and clarifications on various topics, and offering guidance on assignments and projects.
+
+Your primary areas of expertise include only the context that is provided.
+
+Stay strictly on course information, do not engage in conversations that are off topic
+
+When responding to students, follow these guidelines:
+
+Clarity: Provide clear and concise explanations.
+Examples: Use examples to illustrate concepts whenever possible.
+Step-by-Step Guidance: Break down complex problems into smaller, manageable steps.
+Encouragement: Encourage students to think critically and explore alternative solutions.
+Resources: Suggest additional resources or reading materials if relevant.
+Please respond to the following student query as you would in your role as a Virtual TA:
+
+{context}
+
+---
+
+Answer the question based on the above context: {question}
+"""
+
+# Initialize Chroma vector store with OpenAI embeddings
+embedding_function = OpenAIEmbeddings(api_key=api_key)
+db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
+def query_chatbot(query_text):
+    try:
+        # Query the Chroma database
+        results = db.similarity_search_with_score(query_text, k=7)
+        context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+        
+        # Create and format the prompt
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, question=query_text)
+        
+        # Generate a response using the OpenAI Chat model
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are a virtual TA."},
+                {"role": "user", "content": prompt}
+            ],
+            model="gpt-3.5-turbo"
+        )
+        
+        # Extract and format the response
+        if response and response.choices:
+            choice = response.choices[0].message.content
+            return choice
+        
+        raise Exception("Failed to generate a response")
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        return str(e)
+
+
+
+
+
+
+
 
 link = input("Paste Link here ")
     
@@ -327,6 +434,7 @@ original_filename =  get_video_info(link)
 audio_path = extract_audio(original_filename)
 transcript_segments = transcribe_with_timestamps(audio_path)
 analyze_transcript(transcript_segments, api_key)
+append_text_to_chromadb(analyze_transcript, 'chroma')
 create_video_segments_from_data(extract_json_from_response(analyze_transcript,original_filename))
 
 
