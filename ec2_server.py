@@ -6,6 +6,7 @@ import whisper
 import cv2
 import pytesseract
 import re
+import boto3
 from yt_dlp import YoutubeDL
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from flask import Flask, request, jsonify, redirect, url_for, render_template
@@ -34,12 +35,13 @@ MODEL = whisper.load_model("base")
 app.config['UPLOAD_FOLDER'] = "/home/ubuntu/people+ai/data"
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
+ALLOWED_AUDIO_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac'}
+
 # Set the Chroma DB path and OpenAI API key
 CHROMA_PATH = "chroma"
 
 # Initialize OpenAI client with provided settings
 client = OpenAI(api_key=api_key)
-
 
 # Prompt template for generating responses
 PROMPT_TEMPLATE = """
@@ -68,6 +70,16 @@ Answer the question based on the above context: {question}
 # Initialize Chroma vector store with OpenAI embeddings
 embedding_function = OpenAIEmbeddings(api_key=api_key)
 db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
+# AWS S3 Configuration
+S3_BUCKET = 'addhiraj-videos'
+S3_REGION = 'ap-south-1'  # e.g., 'us-west-1'
+AWS_ACCESS_KEY_ID = 'your-aws-access-key-id'
+AWS_SECRET_ACCESS_KEY = 'your-aws-secret-access-key'
+
+s3 = boto3.client('s3', region_name=S3_REGION,
+                  aws_access_key_id=AWS_ACCESS_KEY_ID,
+                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
 
 
 def extract_audio(video_path):
@@ -302,6 +314,23 @@ def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir
         final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
         print(f"Created clip for topic {i}: {output_path}")
 
+
+def create_video_segments_from_data(data, source_video_path, output_dir):
+    video = VideoFileClip(source_video_path)
+    print (f"data: {data}")
+    # Process each timestamp segment in the JSON data
+    for segment in data['ts']:
+        ts_start = float(segment['ts_start'])
+        ts_end = float(segment['ts_end'])
+        description = segment['short description'].replace(' ', '_')
+        
+        # Create video clip for each segment
+        clip = video.subclip(ts_start, ts_end)
+        output_filename = f"{segment['seq']}_{description}.mp4"
+        clip.write_videofile(f"{output_dir}/{output_filename}", codec="libx264", audio_codec="aac")
+        print(f"Created clip {output_filename} at {f"{output_dir}/{output_filename}"}: {ts_start} to {ts_end}")
+
+
 def timestamp_to_seconds(timestamp):
     """
     Converts a timestamp string to seconds. Handles HH:MM:SS, MM:SS, and even just SS formats.
@@ -365,9 +394,12 @@ def process_video(video_path):
     audio_path = extract_audio(video_path)
     transcript_segments = transcribe_with_timestamps(audio_path)
     analysis_json = analyze_transcript(transcript_segments, api_key)
-    append_text_to_chromadb(transcript_segments+analysis_json)
-    create_video_clips_from_gpt_output(extract_json_from_response(analysis_json), video_path, app.config['UPLOAD_FOLDER'])
-
+    append_text_to_chromadb(str(transcript_segments)+ str(analysis_json))
+    gpt_output = extract_json_from_response(analysis_json)
+    print(f"gpt_output: {gpt_output}")
+    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
+    
+    create_video_segments_from_data(extract_json_from_response(analysis_json), video_path, app.config['UPLOAD_FOLDER'])
 
     # Process the extracted text
 def is_valid_youtube_url(url):
@@ -383,6 +415,12 @@ def process_file(file_path):
     # Simulate a long processing task
     time.sleep(10)
     print('File processed!')
+
+
+def allowed_audio_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_AUDIO_EXTENSIONS
+
 
 def allowed_video_file(filename):
     return '.' in filename and \
@@ -405,8 +443,7 @@ def append_text_to_chromadb(text, persist_directory='chroma'):
         db = Chroma.from_documents([doc], embeddings_model, persist_directory=persist_directory)
 
     # Append the document to ChromaDB
-    db.append_documents([doc])
-    
+    db.aadd_documents([doc])
     # Save the updated database
     db.persist()
     
@@ -441,7 +478,7 @@ def query_chatbot(query_text):
     except Exception as e:
         print(f"Error: {e}")
         return str(e)
-    
+
 @app.route('/hello', methods=['GET'])
 def hello():
     return jsonify({'message': 'Hello, World!'})
@@ -490,6 +527,53 @@ def input_video():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+
+@app.route('/transcribe_audio', methods=['POST'])
+def transcribe_audio():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_audio_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        try:
+            # Transcribe the audio file
+            result = MODEL.transcribe(file_path)
+            transcription = result['text']
+            
+            # Post transcription to the /chat endpoint
+            chat_endpoint = "http://localhost:5000/chat"  # Update with your actual /chat endpoint URL
+            payload = {'chat_msg': transcription}
+            response = requests.post(chat_endpoint, data=payload)
+            
+            if response.status_code == 200:
+                chat_response = response.json()
+                return jsonify({'message': 'Transcription and chat successful', 'transcription': transcription, 'chat_response': chat_response}), 200
+            else:
+                return jsonify({'error': 'Failed to post transcription to chat', 'details': response.text}), 500
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'File type not allowed'}), 400
+
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    chat_msg = request.form.get('chat_msg')
+    if chat_msg:
+        print(f"Received chat message: {chat_msg}")
+        resp = query_chatbot(chat_msg)
+        return jsonify({"status": "success", "response": f"{resp}"})
+    else:
+        return jsonify({"status": "error", "message": "No chat message received"}), 400
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
 
