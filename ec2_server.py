@@ -74,12 +74,25 @@ db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function
 # AWS S3 Configuration
 S3_BUCKET = 'addhiraj-videos'
 S3_REGION = 'ap-south-1'  # e.g., 'us-west-1'
-AWS_ACCESS_KEY_ID = 'your-aws-access-key-id'
-AWS_SECRET_ACCESS_KEY = 'your-aws-secret-access-key'
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 
 s3 = boto3.client('s3', region_name=S3_REGION,
                   aws_access_key_id=AWS_ACCESS_KEY_ID,
                   aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+
+def upload_to_s3(file_path):
+    file_name = file_path.split('/')[-1]
+    # Upload the file to S3
+            
+    try:
+        s3.upload_file(file_path, S3_BUCKET, file_name)    
+            # Construct the S3 URL
+        s3_url = f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{file_name}"
+        print(f"Uploaded {file_name} to S3 bucket: {S3_BUCKET}")
+        return s3_url
+    except Exception as e:
+        print(f"Error uploading {file_name} to S3: {e}")
 
 
 def extract_audio(video_path):
@@ -317,7 +330,7 @@ def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir
 
 def create_video_segments_from_data(data, source_video_path, output_dir):
     video = VideoFileClip(source_video_path)
-    
+
     # Process each timestamp segment in the JSON data
     for segment in data['ts']:
         ts_start = float(segment['ts_start'])
@@ -329,6 +342,9 @@ def create_video_segments_from_data(data, source_video_path, output_dir):
         output_filename = f"{segment['seq']}_{description}.mp4"
         clip.write_videofile(f"{output_dir}/{output_filename}", codec="libx264", audio_codec="aac")
         print(f"Created clip {output_filename} at {f"{output_dir}/{output_filename}"}: {ts_start} to {ts_end}")
+
+        s3_url = upload_to_s3(f"{output_dir}/{output_filename}")
+        segment['s3_video_url'] = s3_url
 
 
 def timestamp_to_seconds(timestamp):
@@ -395,18 +411,18 @@ def process_video(video_path):
     transcript_segments = transcribe_with_timestamps(audio_path)
     analysis_json = analyze_transcript(transcript_segments, api_key)
     append_text_to_chromadb(str(transcript_segments)+ str(analysis_json))
-    gpt_output = extract_json_from_response(analysis_json)
-    
-    print(f"gpt_output: {gpt_output}")
-    video_prefix = video_path.split('/')[-1].split('.')[0]
-    details_json = f"{app.config['UPLOAD_FOLDER']}/details.json"  
-    with open(details_json, 'w') as file:
-            json.dump(gpt_output, file, indent=4)
-    
-    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
-    create_video_segments_from_data(extract_json_from_response(analysis_json), video_path, app.config['UPLOAD_FOLDER'])
+    data = extract_json_from_response(analysis_json)
+    print(f"DATA: {data}")
 
-    # Process the extracted text
+    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
+    create_video_segments_from_data(data, video_path, app.config['UPLOAD_FOLDER'])
+    print(f"DATA WITH S3_URL: {data}")
+    videofile = video_path.split('/')[-1]
+    details_json = f"{app.config['UPLOAD_FOLDER']}/{videofile}_details.json"  
+    with open(details_json, 'w') as file:
+            json.dump(data, file, indent=4)
+    
+
 def is_valid_youtube_url(url):
     youtube_regex = re.compile(
         r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/.+$'
@@ -420,12 +436,6 @@ def process_file(file_path):
     # Simulate a long processing task
     time.sleep(10)
     print('File processed!')
-
-
-def allowed_audio_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_AUDIO_EXTENSIONS
-
 
 def allowed_video_file(filename):
     return '.' in filename and \
@@ -492,10 +502,12 @@ def hello():
 def upload_file():
     print("Request received: {request}")
     if 'file' not in request.files:
-        return 'No file part'
+        return jsonify({'error': 'No file part'}), 400
+    
     file = request.files['file']
     if file.filename == '':
-        return 'No selected file'
+        return jsonify({'error': 'No selected file'}), 400
+    
     if file and allowed_video_file(file.filename):
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -503,13 +515,12 @@ def upload_file():
         try:
             file.save(file_path)
             scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
-            return f'File successfully uploaded to {file_path}'
+            file_name = file_path.split('/')[-1]
+            return jsonify({'filepath': f"{file_name}"}), 200
         except Exception as e:
-            return f'An error occurred while saving the file: {e}'
- 
-
+            return jsonify({'error': str(e)}), 502
     else:
-        return 'File type not allowed'
+        return jsonify({'error': 'File type not allowed'}), 400
 
 @app.route('/video_url', methods=['POST'])
 def input_video():
@@ -522,7 +533,8 @@ def input_video():
                     yt = YouTube(url)
                     video_filepath = download_ydl(url, output_path=app.config['UPLOAD_FOLDER'])
                     scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
-                    return jsonify({'message': 'Valid YouTube URL', 'title': yt.title}), 200
+                    file_name = video_filepath.split('/')[-1]
+                    return jsonify({'filepath':file_name}), 200
                 except Exception as e:
                     return jsonify({'error': str(e)}), 400
             else:
@@ -534,6 +546,7 @@ def input_video():
 
 @app.route('/transcribe_audio', methods=['POST'])
 def transcribe_audio():
+    print("Request received: {request}")
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     file = request.files['file']
@@ -556,6 +569,7 @@ def transcribe_audio():
             
             if response.status_code == 200:
                 chat_response = response.json()
+                print("Transcription response : {chat_response}")
                 return jsonify({'message': 'Transcription and chat successful', 'transcription': transcription, 'chat_response': chat_response}), 200
             else:
                 return jsonify({'error': 'Failed to post transcription to chat', 'details': response.text}), 500
@@ -565,9 +579,15 @@ def transcribe_audio():
         return jsonify({'error': 'File type not allowed'}), 400
 
 
-@app.route('/get_details', methods=['GET'])
+@app.route('/details', methods=['POST'])
 def get_details():
-    details_json = f"{app.config['UPLOAD_FOLDER']}/details.json"
+    data = request.get_json()
+    filename = data.get('filename') if data else None
+    if filename:
+        print(f"Received request for details of filename: {filename}")
+
+    details_json = f"{app.config['UPLOAD_FOLDER']}/{filename}_details.json"
+    print (f"Details JSON path: {details_json}")
     if os.path.exists(details_json):
         with open(details_json, 'r') as file:
             details = json.load(file)
