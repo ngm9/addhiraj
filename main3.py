@@ -293,12 +293,42 @@ def get_video_info(video_url):
         video_filename = ydl.prepare_filename(info_dict)
         return video_filename
 
-link = 'https://www.youtube.com/watch?v=-OTc0Ki7Sv0&ab_channel=Fireship'
+
+
+
+
+def extract_json_from_response(response):
+    # Extracting JSON from the string wrapped in code block (```)
+    content = response['choices'][0]['message']['content']
+    json_str = content.split('```json\n')[1].split('\n```')[0]
+    return json.loads(json_str)
+
+def create_video_segments_from_data(data, source_video_path):
+    video = VideoFileClip(source_video_path)
+    
+    # Process each timestamp segment in the JSON data
+    for segment in data['ts']:
+        ts_start = float(segment['ts_start'])
+        ts_end = float(segment['ts_end'])
+        description = segment['short description'].replace(' ', '_')
+        
+        # Create video clip for each segment
+        clip = video.subclip(ts_start, ts_end)
+        output_filename = f"{segment['seq']}_{description}.mp4"
+        clip.write_videofile(output_filename, codec="libx264", audio_codec="aac")
+        print(f"Created clip {output_filename}: {ts_start} to {ts_end}")
+
+
+
+
+link = input("Paste Link here ")
     
 original_filename =  get_video_info(link)
 audio_path = extract_audio(original_filename)
 transcript_segments = transcribe_with_timestamps(audio_path)
-print(analyze_transcript(transcript_segments, api_key))
-#unique_texts = extract_text_from_video(original_filename)
-#print(unique_texts)
+analyze_transcript(transcript_segments, api_key)
+create_video_segments_from_data(extract_json_from_response(analyze_transcript,original_filename))
+
+
+
 
