@@ -516,7 +516,7 @@ def upload_file():
             file.save(file_path)
             scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
             file_name = file_path.split('/')[-1]
-            return jsonify({'filepath': f"{file_name}"}), 200
+            return jsonify({'filename': f"{file_name}"}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 502
     else:
@@ -534,7 +534,7 @@ def input_video():
                     video_filepath = download_ydl(url, output_path=app.config['UPLOAD_FOLDER'])
                     scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
                     file_name = video_filepath.split('/')[-1]
-                    return jsonify({'filepath':file_name}), 200
+                    return jsonify({'filename':file_name}), 200
                 except Exception as e:
                     return jsonify({'error': str(e)}), 400
             else:
