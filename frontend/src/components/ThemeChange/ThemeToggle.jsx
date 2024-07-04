@@ -8,7 +8,7 @@ const ThemeToggle = () => {
   return (
     <div style={{ marginBottom: '1rem' }}>
       <Switch checked={isHighContrast} onChange={toggleTheme} />
-      <span style={{ marginLeft: '0.5rem' }}>High Contrast</span>
+      <span className='normal-text' style={{ marginLeft: '0.5rem' }}>High Contrast</span>
     </div>
   );
 };

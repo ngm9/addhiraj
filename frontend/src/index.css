@@ -5,13 +5,16 @@
 :root {
   --background-color: #2d3748;
   --text-color: #edf2f7;
-  --font-size: 16px;
+  --global-font-size: 16px;
 }
 
 .high-contrast {
   --background-color: #000000;
   --text-color: #ffffff;
   --font-size: 18px;
+}
+.normal-text{
+  --global-font-size: 16px;
 }
 
 
@@ -34,7 +37,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--background-color);
   color: var(--text-color);
-  font-size: var(--font-size);
+  font-size: var(--global-font-size);
 }
 
 code {
@@ -43,7 +46,7 @@ code {
 }
 
 body.high-contrast {
-  background-color: black;
+  background-color: #ACE5EE;
   color: white;
 }
 

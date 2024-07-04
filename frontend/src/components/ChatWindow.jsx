@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
-import { Avatar, List, Skeleton, Segmented } from 'antd';
+import { Button,Avatar, List, Skeleton, Segmented } from 'antd';
 import Summary from './video_summary'; // Import the Summary component
 import { AudioRecorder } from 'react-audio-voice-recorder';
 import { FaMicrophone } from "react-icons/fa";
@@ -114,11 +114,11 @@ const ChatWindow = () => {
 
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 border border-gray-300 rounded-lg shadow-lg h-full flex flex-col">
-    <h2 className="text-2xl font-bold mb-4">Chat and Transcription</h2>
+    <div className="w-full max-w-md mx-auto p-4  border border-gray-300 rounded-lg shadow-lg h-100 flex flex-col overflow-y-auto">
+    <h2 className="text-2xl font-bold mb-4">Chat</h2>
     <Segmented
       options={[
-        { value: 'Summary', label: 'Transcription' },
+        { value: 'Clips', label: 'Clips' },
         { value: 'Chat', label: 'Chat' }
       ]}
       value={activeTab}
@@ -126,32 +126,36 @@ const ChatWindow = () => {
       className="mb-4 w-full"
       block
     />
+    {activeTab === 'Clips' && (
+      <div className='normal-text'>
+        Please upload a video first
+        <Skeleton paragraph={{ rows: 10 }} />
+      </div>
+    )
 
-    {activeTab === 'Summary' && <Summary summary={summary} loading={summaryLoading} />}
-
+    }
     {activeTab === 'Chat' && (
-      <div className="flex-grow overflow-y-auto mb-4 border bg-slate-100 border-gray-200 rounded-md p-2 text-white">
+      <div className="flex-grow overflow-y-auto h-100 mb-4 border bg-slate-100 border-gray-200 rounded-md p-2 text-white" style={{height: '250px'}}>
         <List
             itemLayout="vertical"
             size="large"
             dataSource={messages}
             renderItem={(msg, index) => (
               <List.Item key={index} >
+              
                 {msg.sender === 'bot' ? (
-                  <Skeleton loading={loading && index === messages.length - 1} active>
                     <List.Item.Meta
-                      title="Bot"
-                      description={msg.text}
-                   
+                  title={<span style={{ color: 'black' }}>Bot</span>}
+                  description={<span style={{ color: 'black' }}>{msg.text}</span>}                   
                     />
-                  </Skeleton>
                 ) : (
                   <List.Item.Meta
-                    title="You"
-                    description={msg.text}
-                  
+                  title={<span style={{ color: 'green' }}>You</span>}
+                  description={<span style={{ color: 'black' }}>{msg.text}</span>}                   
+
                   />
                 )}
+              
               </List.Item>
             )}
           />
@@ -160,7 +164,7 @@ const ChatWindow = () => {
 
     {activeTab === 'Chat' && (
       <>
-        <div className="relative w-full mb-4">
+        <div className="relative w-full mb-4 ">
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -170,6 +174,7 @@ const ChatWindow = () => {
         />
             <div className="absolute top-2 right-2">
               <AudioRecorder
+                
                 onRecordingComplete={handleAudioUpload}
                 audioTrackConstraints={{
                   noiseSuppression: true,
@@ -189,12 +194,12 @@ const ChatWindow = () => {
               />
             </div>
           </div>
-          <button
+          <Button
             onClick={handleAskQuestion}
             className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             Ask
-          </button>
+          </Button>
       </>
     )}
   </div>
