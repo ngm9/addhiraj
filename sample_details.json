@@ -1,0 +1,287 @@
+{
+  "url": "youtube_url",
+  "title": "Physics Demonstration on Energy Conservation",
+  "description": "An engaging lecture showcasing a pendulum experiment to demonstrate energy conservation principles and the serious potential impact of mechanical energy.",
+  "ts": [
+    {
+      "seq": "1",
+      "ts_start": "0.0",
+      "ts_end": "12.6",
+      "short description": "Introduction to the pendulum experiment and the concept of work and potential energy.",
+      "mcqs": [
+        {
+          "q": "What can be inferred when lifting an object against gravity?",
+          "choices": [
+            "Work is done.",
+            "Kinetic energy is created.",
+            "No energy change occurs.",
+            "Potential energy decreases."
+          ],
+          "ans": "0"
+        },
+        {
+          "q": "In the context of the lecture, what does MGH represent?",
+          "choices": [
+            "Mechanical gear height.",
+            "Mass gravity height.",
+            "Work done to lift an object.",
+            "Mechanical gain height."
+          ],
+          "ans": "2"
+        }
+      ]
+    },
+    {
+      "seq": "2",
+      "ts_start": "12.6",
+      "ts_end": "23.6",
+      "short description": "Explanation of potential energy conversion to kinetic energy and its lethal potential.",
+      "mcqs": [
+        {
+          "q": "What happens to potential energy when the pendulum is released?",
+          "choices": [
+            "It remains the same.",
+            "It converts to kinetic energy.",
+            "It converts to mechanical energy.",
+            "It disappears completely."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "How much potential energy is given in the example?",
+          "choices": [
+            "120 joules",
+            "100 joules",
+            "150 joules",
+            "200 joules"
+          ],
+          "ans": "2"
+        }
+      ]
+    },
+    {
+      "seq": "3",
+      "ts_start": "23.6",
+      "ts_end": "42.54",
+      "short description": "Demonstration of the pendulums kinetic energy and practical applications in demolishing buildings.",
+      "mcqs": [
+        {
+          "q": "What is one practical application of converting gravitational potential energy to kinetic energy provided in the lecture?",
+          "choices": [
+            "Generating electricity.",
+            "Wrecking buildings.",
+            "Propelling cars.",
+            "Flying drones."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "What is required to convert potential energy into kinetic energy?",
+          "choices": [
+            "Increasing height significantly.",
+            "Release of a heavy object.",
+            "Increasing speed initially.",
+            "Keeping the object still."
+          ],
+          "ans": "1"
+        }
+      ]
+    },
+    {
+      "seq": "4",
+      "ts_start": "42.54",
+      "ts_end": "59.06",
+      "short description": "Further insight into wrecking mechanisms by using potential and kinetic energy.",
+      "mcqs": [
+        {
+          "q": "Which mechanism utilizes the conversion of gravitational potential energy to kinetic energy to wreck buildings?",
+          "choices": [
+            "Pulley systems.",
+            "Lever machines.",
+            "Rackable devices.",
+            "Elevators."
+          ],
+          "ans": "2"
+        },
+        {
+          "q": "In the lecture, what is one way mentioned to effectively demolish a building?",
+          "choices": [
+            "Using explosives.",
+            "Using wreckable devices.",
+            "Using large fans.",
+            "Using bulldozers."
+          ],
+          "ans": "1"
+        }
+      ]
+    },
+    {
+      "seq": "5",
+      "ts_start": "59.06",
+      "ts_end": "89.82",
+      "short description": "Introduction to the principle of conservation of mechanical energy.",
+      "mcqs": [
+        {
+          "q": "What conservation principle is being heavily emphasized by the professor?",
+          "choices": [
+            "Conservation of kinetic energy only.",
+            "Conservation of momentum.",
+            "Conservation of mechanical energy.",
+            "Conservation of electrical energy."
+          ],
+          "ans": "2"
+        },
+        {
+          "q": "What does the professor express willingness to risk to demonstrate the principle?",
+          "choices": [
+            "Financial assets.",
+            "Technical devices.",
+            "Personal life.",
+            "Reputation."
+          ],
+          "ans": "2"
+        }
+      ]
+    },
+    {
+      "seq": "6",
+      "ts_start": "89.82",
+      "ts_end": "107.3",
+      "short description": "Explanation of the pendulum’s inability to swing back higher than its release height.",
+      "mcqs": [
+        {
+          "q": "What happens to the height of the pendulum when it swings back?",
+          "choices": [
+            "It reaches a higher point.",
+            "It reaches a lower point.",
+            "It does not swing back.",
+            "It cannot be determined."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "According to the conservation of energy, the pendulum cannot do what?",
+          "choices": [
+            "Swing indefinitely.",
+            "Reach a higher point than its release height.",
+            "Convert kinetic energy to potential energy.",
+            "Remain stationary."
+          ],
+          "ans": "1"
+        }
+      ]
+    },
+    {
+      "seq": "7",
+      "ts_start": "107.3",
+      "ts_end": "121.38",
+      "short description": "Additional details on the energy transformations between kinetic and potential energy.",
+      "mcqs": [
+        {
+          "q": "Which two types of energy are constantly converting in the pendulum example?",
+          "choices": [
+            "Thermal and electrical.",
+            "Potential and kinetic.",
+            "Chemical and mechanical.",
+            "Nuclear and potential."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "When the pendulum returns to its starting position but does not surpass it, what is exemplified?",
+          "choices": [
+            "Energy loss.",
+            "Energy creation.",
+            "Energy conservation.",
+            "Energy depletion."
+          ],
+          "ans": "2"
+        }
+      ]
+    },
+    {
+      "seq": "8",
+      "ts_start": "121.38",
+      "ts_end": "135.8",
+      "short description": "Discussion on initial speed’s impact on the pendulums motion.",
+      "mcqs": [
+        {
+          "q": "What should be zero at the start to ensure safety in the pendulum experiment?",
+          "choices": [
+            "Mass of the object.",
+            "Initial speed.",
+            "Potential energy.",
+            "Swing height."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "To maximize trust in the conservation principle during the pendulum swing, what must not be given?",
+          "choices": [
+            "Additional height.",
+            "Additional speed.",
+            "Additional mass.",
+            "Additional kinetic energy."
+          ],
+          "ans": "1"
+        }
+      ]
+    },
+    {
+      "seq": "9",
+      "ts_start": "135.8",
+      "ts_end": "163.04",
+      "short description": "Preparations and warnings before releasing the pendulum in the experiment.",
+      "mcqs": [
+        {
+          "q": "What emotion is the professor experiencing before the pendulum test?",
+          "choices": [
+            "Excitement.",
+            "Fear.",
+            "Confidence.",
+            "Indifference."
+          ],
+          "ans": "1"
+        },
+        {
+          "q": "What does the professor hope to achieve by releasing the pendulum at zero speed?",
+          "choices": [
+            "High speed at the end.",
+            "No risk of injury.",
+            "Maximum potential energy.",
+            "Increased swinging height."
+          ],
+          "ans": "1"
+        }
+      ]
+    },
+    {
+      "seq": "10",
+      "ts_start": "163.04",
+      "ts_end": "196.84",
+      "short description": "Final demonstration of trust in physics and the conclusion of the experiment.",
+      "mcqs": [
+        {
+          "q": "What was the professors final action to ensure his safety?",
+          "choices": [
+            "Closed his eyes.",
+            "Increased the height.",
+            "Twisted the pendulum.",
+            "Held the object tightly."
+          ],
+          "ans": "0"
+        },
+        {
+          "q": "What was the outcome of the experiment?",
+          "choices": [
+            "The professor got injured.",
+            "The experiment failed.",
+            "The professor survived.",
+            "The bob did not swing back."
+          ],
+          "ans": "2"
+        }
+      ]
+    }
+  ]
+}

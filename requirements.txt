@@ -13,4 +13,6 @@ flask-cors
 Flask-APScheduler
 langchain_community
 langchain_openai
+langchain_chroma
+langchain_experimental
 chromadb

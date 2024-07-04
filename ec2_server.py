@@ -86,7 +86,9 @@ def upload_to_s3(file_path):
     # Upload the file to S3
             
     try:
-        s3.upload_file(file_path, S3_BUCKET, file_name)    
+        s3.upload_file(file_path, S3_BUCKET, file_name, ExtraArgs={
+                    'ContentType': 'binary/octet-stream',
+                    'ContentDisposition': 'inline'})    
             # Construct the S3 URL
         s3_url = f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{file_name}"
         print(f"Uploaded {file_name} to S3 bucket: {S3_BUCKET}")
@@ -511,14 +513,19 @@ def upload_file():
     if file and allowed_video_file(file.filename):
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print(f"attemptig to save {file.filename} to {file_path}")
-        try:
-            file.save(file_path)
-            scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
-            file_name = file_path.split('/')[-1]
-            return jsonify({'filename': f"{file_name}"}), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 502
+
+        if not os.path.exists(file_path):
+            print(f"attemptig to save {file.filename} to {file_path}")
+            try:
+                file.save(file_path)
+                scheduler.add_job(func=process_file, args=[file_path], trigger='date', id='file_process_job')
+                file_name = file_path.split('/')[-1]
+                return jsonify({'filename': f"{file_name}"}), 200
+            except Exception as e:
+                return jsonify({'error': str(e)}), 502
+        else:
+            print(f"We have already processed this file - {filename}. Skipping processing and returning the details.")
+            return jsonify({'filename': f"{filename}"}), 200
     else:
         return jsonify({'error': 'File type not allowed'}), 400
 
@@ -532,6 +539,9 @@ def input_video():
                 try:
                     yt = YouTube(url)
                     video_filepath = download_ydl(url, output_path=app.config['UPLOAD_FOLDER'])
+                    if os.path.exists(video_filepath):
+                        print(f"We have already processed this file - {video_filepath}. Skipping processing and returning the details.")
+                        return jsonify({'filename':file_name}), 200
                     scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
                     file_name = video_filepath.split('/')[-1]
                     return jsonify({'filename':file_name}), 200
@@ -607,5 +617,3 @@ def chat():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
-
