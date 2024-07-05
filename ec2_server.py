@@ -33,6 +33,10 @@ api_key = os.getenv('OPENAI_API_KEY')
 # Load Whisper model globally to avoid redundancy
 MODEL = whisper.load_model("base")
 app.config['UPLOAD_FOLDER'] = "/home/ubuntu/people+ai/data"
+OCR_TEXT_SUFFIX = "_ocrtext.txt"
+TRANSCRIPT_SUFFIX = "_transcript.txt"
+DETAILS_SUFFIX = "_details.json"
+
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
 ALLOWED_AUDIO_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flac'}
@@ -261,75 +265,6 @@ def extract_json_from_response(response):
     json_str = content.split('```json\n')[1].split('\n```')[0]
     return json.loads(json_str)
 
-def create_video_clips_from_gpt_output(gpt_output, source_video_path, output_dir):
-    # Ensure the GPT output has the expected data structure
-    if 'choices' not in gpt_output or not gpt_output['choices']:
-        print("Error: The GPT response does not contain expected data.")
-        return
-
-    # Attempt to extract and parse the JSON content from the first choice
-    try:
-        topics_content = gpt_output['choices'][0]['message']['content']
-        topics_data = json.loads(topics_content)
-        if 'topics' not in topics_data:
-            print("Error: No 'topics' key found in the JSON data.")
-            return
-        topics_data = topics_data['topics']
-    except (IndexError, KeyError, json.JSONDecodeError) as e:
-        print(f"Error processing GPT output: {e}")
-        return
-
-    # Ensure the output directory exists
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # Load the source video
-    source_video = VideoFileClip(source_video_path)
-    video_duration = source_video.duration
-
-    # Process each topic to create clips
-    for i, topic in enumerate(topics_data, start=1):
-        try:
-            topic_name = topic['topic']
-            description = topic['description']
-            timestamps = topic['timestamps']
-        except KeyError as e:
-            print(f"Missing expected key {e} in topic data. Skipping this topic...")
-            continue
-
-        subclips = []
-        for timestamp_range in timestamps:
-            try:
-                start_str, end_str = timestamp_range['start'], timestamp_range['end']
-                start = timestamp_to_seconds(start_str)
-                end = timestamp_to_seconds(end_str)
-
-                # Check for video duration bounds
-                if start >= video_duration:
-                    print(f"Start timestamp for clip {i} exceeds video duration. Skipping...")
-                    continue
-                if end > video_duration:
-                    print(f"End timestamp for clip {i} exceeds video duration. Adjusting to video end.")
-                    end = video_duration
-
-                # Create and store subclip
-                subclip = source_video.subclip(start, end)
-                subclips.append(subclip)
-            except ValueError as e:
-                print(f"Error with timestamp conversion: {e}. Skipping this timestamp...")
-                continue
-
-        if not subclips:
-            print(f"No valid clips for topic {i}. Skipping...")
-            continue
-
-        # Concatenate all valid subclips for the topic
-        final_clip = concatenate_videoclips(subclips)
-        output_path = os.path.join(output_dir, f"topic_{i}_{topic_name}.mp4")
-        final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
-        print(f"Created clip for topic {i}: {output_path}")
-
-
 def create_video_segments_from_data(data, source_video_path, output_dir):
     video = VideoFileClip(source_video_path)
 
@@ -348,7 +283,6 @@ def create_video_segments_from_data(data, source_video_path, output_dir):
         s3_url = upload_to_s3(f"{output_dir}/{output_filename}")
         segment['s3_video_url'] = s3_url
 
-
 def timestamp_to_seconds(timestamp):
     """
     Converts a timestamp string to seconds. Handles HH:MM:SS, MM:SS, and even just SS formats.
@@ -364,7 +298,7 @@ def timestamp_to_seconds(timestamp):
     else:
         raise ValueError("Timestamp format is incorrect, should be HH:MM:SS, MM:SS, or SS")
 
-def extract_text_from_video(video_path, output_dir, frame_interval=30):
+def extract_text_from_video(video_path, frame_interval=30):
     """
     Extracts text from video frames using Tesseract OCR and saves unique text.
 
@@ -373,12 +307,14 @@ def extract_text_from_video(video_path, output_dir, frame_interval=30):
     :param frame_interval: Interval to capture frames for OCR (in seconds).
     :return: List of unique text found in the video.
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    print(f"attempting to extract text from {video_path}")
 
     unique_texts = set()
     video = VideoFileClip(video_path)
     duration = int(video.duration)
+
+    print(f"Duration of video: {duration} seconds. which is type: {type(duration)}")
+    print(f"Frame interval: {frame_interval} seconds which is type: {type(frame_interval)}")
 
     for time in range(0, duration, frame_interval):
         frame = video.get_frame(time)
@@ -387,9 +323,13 @@ def extract_text_from_video(video_path, output_dir, frame_interval=30):
         if text.strip() and text not in unique_texts:
             unique_texts.add(text.strip())
 
+    with open(f"{video_path}{OCR_TEXT_SUFFIX}", 'w') as file:
+        file.writelines(list(unique_texts))
+
     return list(unique_texts)
 
 def download_ydl(video_url, output_path):
+    print(f"Downloading video from {video_url} to {output_path}")
     # Define download options
     ydl_opts = {
         'verbose': True,
@@ -399,31 +339,41 @@ def download_ydl(video_url, output_path):
 
     # URL of the video to download
     #video_url= 'https://www.youtube.com/watch?v=77ZF50ve6rs&t=44s&ab_channel=LecturesbyWalterLewin.Theywillmakeyou%E2%99%A5Physics.'
-
     # Download the video
     with YoutubeDL(ydl_opts) as ydl:
+        print(f"attempting to extract video info from {video_url}")
+
+        videoinfo = ydl.extract_info(video_url, download=False)
+        video_filepath = ydl.prepare_filename(videoinfo)
+        if os.path.exists(video_filepath):
+            print(f"Video already exists at {video_filepath}. Not Downloading")
+            return ydl.prepare_filename(videoinfo)
+        
+        print(f"downloading {videoinfo.get('title')} at {video_filepath}")
         result = ydl.extract_info(video_url, download=True)
-        print(f"downloading {result.get('title')} at {ydl.prepare_filename(result)}")
+        print(f"Processing: {ydl.prepare_filename(result)}")
+        scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
     return ydl.prepare_filename(result)
 
 def process_video(video_path):
 # Rename or move the downloaded file using os module if needed
-    #original_filename = '/Users/namanbajpai/peopleplus/When a physics teacher knows his stuff !!.mp4'
     audio_path = extract_audio(video_path)
     transcript_segments = transcribe_with_timestamps(audio_path)
+    with open(f"{video_path}{TRANSCRIPT_SUFFIX}", 'w') as file:
+        file.writelines(transcript_segments)
+    extract_text_from_video(video_path)
     analysis_json = analyze_transcript(transcript_segments, api_key)
-    append_text_to_chromadb(str(transcript_segments)+ str(analysis_json))
+    add_to_chromadb(str(transcript_segments)+ str(analysis_json))
+
     data = extract_json_from_response(analysis_json)
     print(f"DATA: {data}")
 
-    #create_video_clips_from_gpt_output(gpt_output, video_path, app.config['UPLOAD_FOLDER'])
     create_video_segments_from_data(data, video_path, app.config['UPLOAD_FOLDER'])
     print(f"DATA WITH S3_URL: {data}")
     videofile = video_path.split('/')[-1]
-    details_json = f"{app.config['UPLOAD_FOLDER']}/{videofile}_details.json"  
+    details_json = f"{app.config['UPLOAD_FOLDER']}/{videofile}{DETAILS_SUFFIX}"  
     with open(details_json, 'w') as file:
-            json.dump(data, file, indent=4)
-    
+            json.dump(data, file, indent=4) 
 
 def is_valid_youtube_url(url):
     youtube_regex = re.compile(
@@ -443,7 +393,7 @@ def allowed_video_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
-def append_text_to_chromadb(text, persist_directory='chroma'):
+def add_to_chromadb(text, persist_directory='chroma'):
     # Initialize embeddings model
     embeddings_model = OpenAIEmbeddings(openai_api_key=api_key)
 
@@ -537,13 +487,9 @@ def input_video():
             url = data['url']
             if is_valid_youtube_url(url):
                 try:
-                    yt = YouTube(url)
                     video_filepath = download_ydl(url, output_path=app.config['UPLOAD_FOLDER'])
-                    if os.path.exists(video_filepath):
-                        print(f"We have already processed this file - {video_filepath}. Skipping processing and returning the details.")
-                        return jsonify({'filename':file_name}), 200
-                    scheduler.add_job(func=process_file, args=[video_filepath], trigger='date', id='file_process_job')
                     file_name = video_filepath.split('/')[-1]
+                    print(f"We have already processed this file - {video_filepath}.")
                     return jsonify({'filename':file_name}), 200
                 except Exception as e:
                     return jsonify({'error': str(e)}), 400
@@ -587,7 +533,6 @@ def transcribe_audio():
             return jsonify({'error': str(e)}), 500
     else:
         return jsonify({'error': 'File type not allowed'}), 400
-
 
 @app.route('/details', methods=['POST'])
 def get_details():
