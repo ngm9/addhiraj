@@ -1,0 +1,160 @@
+openapi: 3.0.0
+info:
+  title: EC2 Video Processing and Analysis API
+  description: API for processing videos, extracting audio, transcribing, analyzing transcripts, and interacting with a chatbot.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+paths:
+  /hello:
+    get:
+      summary: Greeting endpoint
+      description: Returns a simple greeting message.
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /upload:
+    post:
+      summary: Upload a video file
+      description: Upload a video file to process and analyze.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: File successfully uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filename:
+                    type: string
+        400:
+          description: Invalid file or request
+        502:
+          description: Server error during processing
+  /video_url:
+    post:
+      summary: Process video from a URL
+      description: Provide a YouTube URL to download and process the video.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        200:
+          description: Video successfully processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filename:
+                    type: string
+        400:
+          description: Invalid YouTube URL
+        500:
+          description: Server error
+  /transcribe_audio:
+    post:
+      summary: Transcribe an audio file
+      description: Upload an audio file to transcribe using the Whisper model.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Transcription and chat response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  transcription:
+                    type: string
+                  chat_response:
+                    type: string
+        400:
+          description: Invalid file or request
+        500:
+          description: Server error
+  /details:
+    post:
+      summary: Retrieve video processing details
+      description: Fetch details of a processed video by filename.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+      responses:
+        200:
+          description: Video processing details
+          content:
+            application/json:
+              schema:
+                type: object
+        404:
+          description: Details not found
+  /chat:
+    post:
+      summary: Interact with the chatbot
+      description: Send a message to the chatbot and receive a response.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                chat_msg:
+                  type: string
+      responses:
+        200:
+          description: Chatbot response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  response:
+                    type: string
+        400:
+          description: No chat message received
